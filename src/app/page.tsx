@@ -7,7 +7,7 @@ export default function HomeRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/config");
+    router.replace("/debate");
   }, [router]);
 
   return null;

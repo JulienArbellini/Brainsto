@@ -1,63 +1,66 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import AgentResponse from "@/components/AgentResponse";
-
-interface DebateTurn {
-  phase: string;
-  responses: { name: string; content: string }[];
-}
+import { useState } from "react";
+import DebateTopicForm from "@/components/DebateTopicForm";
+import UserOpinionForm from "@/components/UserOpinionForm";
+import AgentBuilder from "@/components/AgentBuilder";
+import ChatWithIA from "@/components/ChatWithIA";
+import { AgentConfig } from "@/types/Agents";
 
 export default function DebatePage() {
-  const [turns, setTurns] = useState<DebateTurn[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [step, setStep] = useState<"topic" | "opinion" | "agent" | "chat">("topic");
+
   const [topic, setTopic] = useState("");
-
-  useEffect(() => {
-    const agentsRaw = localStorage.getItem("debateAgents");
-    const topicRaw = localStorage.getItem("debateTopic");
-
-    if (!agentsRaw || !topicRaw) return;
-
-    const agents = JSON.parse(agentsRaw);
-    setTopic(topicRaw);
-
-    const runDebate = async () => {
-      setLoading(true);
-      const res = await fetch("/api/debate/structured", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: topicRaw, agents }),
-      });
-      const data = await res.json();
-      setTurns(data.turns);
-      setLoading(false);
-    };
-
-    runDebate();
-  }, []);
+  const [userOpinion, setUserOpinion] = useState("");
+  const [agents, setAgents] = useState<AgentConfig[]>([]);
 
   return (
-    <main className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Débat : {topic}</h1>
+    <main className="max-w-3xl mx-auto p-6 space-y-6">
+      <h1 className="text-2xl font-bold">🧠 Démarrez votre débat</h1>
 
-      {loading ? (
-        <p>Chargement du débat en cours...</p>
-      ) : (
-        turns.map((turn, index) => (
-          <section key={index} className="mb-10">
-            <h2 className="text-xl font-semibold mb-4">🔁 {turn.phase}</h2>
-            <div className="space-y-4">
-              {turn.responses.map((res, i) => (
-                <AgentResponse
-                  key={i}
-                  name={res.name}
-                  content={res.content}
-                />
-              ))}
-            </div>
-          </section>
-        ))
+      {step === "topic" && (
+        <DebateTopicForm
+          topic={topic}
+          onSubmit={(newTopic) => {
+            setTopic(newTopic);
+            setStep("opinion");
+          }}
+        />
+      )}
+
+      {step === "opinion" && (
+        <UserOpinionForm
+          opinion={userOpinion}
+          onSubmit={(opinion) => {
+            setUserOpinion(opinion);
+            setStep("agent");
+          }}
+          onBack={() => setStep("topic")}
+        />
+      )}
+
+      {step === "agent" && (
+        <AgentBuilder
+          onSubmit={(createdAgent) => {
+            setAgents([createdAgent]);
+            setStep("chat");
+          }}
+          onBack={() => setStep("opinion")}
+        />
+      )}
+
+      {step === "chat" && agents.length > 0 && (
+        <ChatWithIA
+          topic={topic}
+          userOpinion={userOpinion}
+          agents={agents}
+          onRestart={() => {
+            setStep("topic");
+            setTopic("");
+            setUserOpinion("");
+            setAgents([]);
+          }}
+        />
       )}
     </main>
   );
