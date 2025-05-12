@@ -21,7 +21,7 @@ export default function AgentResponse({ name, content }: Props) {
   return (
     <div className="border-l-4 border-blue-500 bg-white p-4 rounded shadow">
     <h2 className="font-semibold text-blue-700 mb-2">{name}</h2>
-    <button onClick={playVoice} className="ml-2 text-sm text-blue-600 underline">
+    <button onClick={playVoice} className="ml-2 text-sm text-blue-600 ">
     🔊 Voix IA
     </button>
     <p className="text-gray-800 whitespace-pre-line">{content}</p>

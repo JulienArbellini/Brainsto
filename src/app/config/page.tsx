@@ -70,7 +70,7 @@ export default function ConfigPage() {
         <button
           type="button"
           onClick={handleAddAgent}
-          className="text-blue-600 underline"
+          className="text-blue-600 "
         >
           ➕ Ajouter un agent
         </button>

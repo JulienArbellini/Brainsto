@@ -4,5 +4,21 @@
 
 /* Optionnel : ajout de styles globaux */
 body {
-  @apply bg-gray-50 text-gray-900;
+  @apply bg-white text-black dark:bg-gray-900 dark:text-white;
+}
+
+input, textarea, select {
+  background-color: white;
+  color: black;
+}
+
+@media (prefers-color-scheme: dark) {
+  input, textarea, select {
+    background-color: #1f2937; /* gray-800 */
+    color: white;
+    border-color: #4b5563; /* gray-600 */
+    ::placeholder {
+      color: #9ca3af; /* gray-400 */
+    }
+  }
 }

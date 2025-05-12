@@ -17,20 +17,28 @@ export default function ChatWithIA(props: Props) {
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [showNewAgentForm, setShowNewAgentForm] = useState(false);
-const [newAgent, setNewAgent] = useState<AgentConfig>({
-name: "",
-intro: "",
-objectif: "",
-inspiration: "",
-});
+  const [newAgent, setNewAgent] = useState<AgentConfig>({
+    name: "",
+    intro: "",
+    objectif: "",
+    inspiration: "",
+  });
 
-function generateMessagesForAgent(agent: AgentConfig, agents: AgentConfig[], chat: ChatMessage[]) {
+  function generateMessagesForAgent(
+    agent: AgentConfig,
+    agents: AgentConfig[],
+    chat: ChatMessage[],
+    topic: string,
+    userOpinion: string
+  ) {
     const personalityPrompt = `Tu es ${agent.name}, un agent d’intelligence artificielle.
   Ton rôle dans ce débat est : ${agent.intro}
   Ton objectif est : ${agent.objectif || "participer au débat avec ton propre point de vue"}.
+  Le sujet du débat est : \"${topic}\".
+  Voici l’avis exprimé par l'utilisateur au début du débat : \"${userOpinion}\".
   Tu ne dois jamais sortir de ton personnage ni adopter un ton neutre ou généralisé.
   Exprime-toi toujours avec cohérence, dans le style et les intentions de ce personnage.`.trim();
-  
+
     if (agents.length === 1) {
       return [
         { role: "system", content: personalityPrompt },
@@ -41,7 +49,7 @@ function generateMessagesForAgent(agent: AgentConfig, agents: AgentConfig[], cha
         })),
       ];
     }
-  
+
     const others = agents.filter((a) => a.name !== agent.name);
     return [
       { role: "system", content: personalityPrompt },
@@ -58,36 +66,55 @@ function generateMessagesForAgent(agent: AgentConfig, agents: AgentConfig[], cha
     ];
   }
 
+  function getColorClassForAgent(name: string): string {
+    const colors = [
+      "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+      "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+      "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+      "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+      "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+      "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
+      "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+      "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
+    ];
+  
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+  }
+  
+
   const startDebate = async () => {
     setLoading(true);
-    const initialChat: ChatMessage[] = [{ role: "user", content: userOpinion }];
-    const updatedChat = [...initialChat];
+    const updatedChat: ChatMessage[] = [];
 
     for (const agent of agents) {
+      const messages = generateMessagesForAgent(agent, agents, updatedChat, topic, userOpinion);
+
       const res = await fetch("/api/ia-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          rolePrompt: agent.intro || "Tu es une IA contradictrice.",
+          rolePrompt: agent.intro?.trim() || `Tu es ${agent.name}, une IA d'opinion.`,
           objectif: agent.objectif || "",
           inspiration: agent.inspiration || "",
-          messages: updatedChat.map((m) => ({
-            role: m.role === "user" ? "user" : "assistant",
-            content: m.content,
-          })),
+          messages,
         }),
       });
 
       const data = await res.json();
       updatedChat.push({ role: agent.name, content: data.response });
     }
+
     setChat(updatedChat);
     setLoading(false);
   };
 
   useEffect(() => {
     startDebate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -96,56 +123,37 @@ function generateMessagesForAgent(agent: AgentConfig, agents: AgentConfig[], cha
     const input = form.elements.namedItem("reply") as HTMLInputElement;
     const value = input.value.trim();
     if (!value) return;
-  
+
     input.value = "";
     const newChat: ChatMessage[] = [...chat, { role: "user", content: value }];
     setChat(newChat);
-    setLoading(false); // <-- Tu termines la fonction ici
+    setLoading(false);
   };
 
   const handleAgentResponse = async (agent: AgentConfig) => {
-
     if (!agent.intro || agent.intro.trim() === "") {
-        alert(`L'agent "${agent.name}" n'a pas de rôle (intro) défini.`);
-        return;
-      }
+      alert(`L'agent \"${agent.name}\" n'a pas de rôle (intro) défini.`);
+      return;
+    }
 
-    if (!agent.intro || agent.intro.trim() === "") {
-        console.warn("Cet agent n’a pas d’intro, donc pas de rôle clair !");
-        alert("L’agent sélectionné n’a pas de rôle défini (‘intro’).");
-        setLoading(false);
-        return;
-      }
     setLoading(true);
-  
-    const previousIAComments = chat
-      .filter((m) => m.role !== "user" && m.role !== agent.name)
-      .map((m) => `${m.role} a dit : "${m.content}"`)
-      .join("\n\n");
-  
-    const lastUserMsg = [...chat].reverse().find((m) => m.role === "user")?.content || "";
-  
-    const userContent =
-      previousIAComments || lastUserMsg
-        ? `Voici ce que les autres ont dit avant toi :\n${previousIAComments}\n\nEt voici le dernier message de l'utilisateur : "${lastUserMsg}". Que réponds-tu ?`
-        : "Donne ton opinion sur le sujet.";
-  
-    const messages = generateMessagesForAgent(agent, agents, chat);
-  
+
+    const messages = generateMessagesForAgent(agent, agents, chat, topic, userOpinion);
+
     try {
       const res = await fetch("/api/ia-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            rolePrompt: agent.intro?.trim() || `Tu es ${agent.name}, une IA d'opinion.`,
-            objectif: agent.objectif || "",
-            inspiration: agent.inspiration || "",
-            messages,
-            }),
+          rolePrompt: agent.intro?.trim() || `Tu es ${agent.name}, une IA d'opinion.`,
+          objectif: agent.objectif || "",
+          inspiration: agent.inspiration || "",
+          messages,
+        }),
       });
-  
+
       const data = await res.json();
-  
+
       if (data.response) {
         setChat((prev) => [...prev, { role: agent.name, content: data.response }]);
       } else {
@@ -154,141 +162,145 @@ function generateMessagesForAgent(agent: AgentConfig, agents: AgentConfig[], cha
     } catch (err) {
       console.error("Erreur de requête IA :", err);
     }
-  
+
     setLoading(false);
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-gray-900 dark:text-gray-100">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-bold">💬 Débat avec {agents.map(a => a.name).join(", ")}</h2>
+        <h2 className="text-lg font-bold">💬 Débat avec {agents.map((a) => a.name).join(", ")}</h2>
         <button
           onClick={onRestart}
-          className="text-sm text-red-600 underline hover:text-red-800"
+          className="text-sm text-red-600  hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
         >
           🔁 Recommencer
         </button>
       </div>
 
-      <div className="bg-white border rounded p-4 h-96 overflow-y-auto space-y-3">
-        {chat.map((msg, i) => (
-          <div
-            key={i}
-            className={`text-sm ${
-              msg.role === "user" ? "text-right" : "text-left"
-            }`}
-          >
-            <div
-              className={`inline-block px-3 py-2 rounded ${
-                msg.role === "user"
-                  ? "bg-blue-100 text-blue-800"
-                  : "bg-gray-100 text-gray-800"
-              }`}
-            >
-              <strong>{msg.role === "user" ? "Vous" : msg.role} :</strong>{" "}
-              {msg.content}
+      <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded p-4 h-96 overflow-y-auto space-y-3">
+        {chat.map((msg, i) => {
+          const agent = agents.find((a) => a.name === msg.role);
+          return (
+            <div key={i} className={`text-sm ${msg.role === "user" ? "text-right" : "text-left"}`}>
+                <div
+                className={`inline-block px-3 py-2 rounded ${
+                    msg.role === "user"
+                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
+                    : getColorClassForAgent(msg.role)
+                }`}
+                >
+                {msg.role !== "user" && (
+                    <img
+                    src={agents.find((a) => a.name === msg.role)?.image}
+                    alt={msg.role}
+                    className="inline w-6 h-6 rounded-full mr-2 align-middle"
+                    />
+                )}
+                <strong>{msg.role === "user" ? "Vous" : msg.role} :</strong> {msg.content}
+                </div>
+
+
             </div>
-          </div>
-        ))}
-        {loading && <p className="text-center text-gray-400">L’IA réfléchit...</p>}
+          );
+        })}
+        {loading && <p className="text-center text-gray-400 dark:text-gray-500">L’IA réfléchit...</p>}
       </div>
 
       <div className="space-y-2">
         <p className="text-sm font-semibold">💡 Faire intervenir un agent :</p>
         <div className="flex flex-wrap gap-2">
-            {agents.map((agent) => (
+          {agents.map((agent) => (
             <button
-                key={agent.name}
-                onClick={() => handleAgentResponse(agent)}
-                className="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded"
-                disabled={loading}
+              key={agent.name}
+              onClick={() => handleAgentResponse(agent)}
+              className="flex items-center gap-2 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 px-3 py-1 rounded"
+              disabled={loading}
             >
-                💬 {agent.name}
+              {agent.image && <img src={agent.image} alt={agent.name} className="w-5 h-5 rounded-full" />}
+              💬 {agent.name}
             </button>
-            ))}
+          ))}
         </div>
-        </div>
+      </div>
 
-      <div className="border p-3 rounded bg-gray-50">
-  <button
-    onClick={() => setShowNewAgentForm(!showNewAgentForm)}
-    className="text-sm text-blue-600 underline mb-2"
-    type="button"
-  >
-    ➕ Ajouter un intervenant IA
-  </button>
+      <div className="border p-3 rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+        <button
+          onClick={() => setShowNewAgentForm(!showNewAgentForm)}
+          className="text-sm text-blue-600 dark:text-blue-400  mb-2"
+          type="button"
+        >
+          ➕ Ajouter un intervenant IA
+        </button>
 
-  {showNewAgentForm && (
-    <form
-    onSubmit={async (e) => {
-        e.preventDefault();
-        if (!newAgent.name || !newAgent.intro) return;
-      
-        const agentToAdd = { ...newAgent }; // clone indépendant
-        setNewAgent({ name: "", intro: "", objectif: "", inspiration: "" });
-        setShowNewAgentForm(false);
-      
-        // On génère d'abord sa réponse avec le contexte du chat
-        const res = await fetch("/api/ia-chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            rolePrompt: agentToAdd.intro,
-            objectif: agentToAdd.objectif || "",
-            inspiration: agentToAdd.inspiration || "",
-            messages: chat.map((m) => ({
-              role: m.role === "user" ? "user" : "assistant",
-              content: m.content,
-            })),
-          }),
-        });
-      
-        const data = await res.json();
-      
-        // Puis on l’ajoute aux agents et au chat
-        setAgents((prev) => [...prev, agentToAdd]);
-        setChat((prev) => [...prev, { role: agentToAdd.name, content: data.response }]);
-      }}
-      className="space-y-2 text-sm"
-    >
-      <input
-        placeholder="Nom"
-        className="w-full p-1 border rounded"
-        value={newAgent.name}
-        onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
-      />
-      <input
-        placeholder="Intro / rôle (obligatoire)"
-        className="w-full p-1 border rounded"
-        value={newAgent.intro}
-        onChange={(e) => setNewAgent({ ...newAgent, intro: e.target.value })}
-      />
-      <input
-        placeholder="Objectif"
-        className="w-full p-1 border rounded"
-        value={newAgent.objectif}
-        onChange={(e) => setNewAgent({ ...newAgent, objectif: e.target.value })}
-      />
-      <input
-        placeholder="Inspiration"
-        className="w-full p-1 border rounded"
-        value={newAgent.inspiration}
-        onChange={(e) => setNewAgent({ ...newAgent, inspiration: e.target.value })}
-      />
-      <button
-        type="submit"
-        className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
-      >
-        Ajouter l'IA
-      </button>
-    </form>
-  )}
-</div>
+        {showNewAgentForm && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!newAgent.name || !newAgent.intro) return;
+
+              const agentToAdd = { ...newAgent };
+              setNewAgent({ name: "", intro: "", objectif: "", inspiration: "" });
+              setShowNewAgentForm(false);
+
+              const res = await fetch("/api/ia-chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  rolePrompt: agentToAdd.intro,
+                  objectif: agentToAdd.objectif || "",
+                  inspiration: agentToAdd.inspiration || "",
+                  messages: chat.map((m) => ({
+                    role: m.role === "user" ? "user" : "assistant",
+                    content: m.content,
+                  })),
+                }),
+              });
+
+              const data = await res.json();
+              setAgents((prev) => [...prev, agentToAdd]);
+              setChat((prev) => [...prev, { role: agentToAdd.name, content: data.response }]);
+            }}
+            className="space-y-2 text-sm"
+          >
+            <input
+              placeholder="Nom"
+              className="w-full p-1 border rounded dark:bg-gray-700 dark:text-white"
+              value={newAgent.name}
+              onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
+            />
+            <input
+              placeholder="Intro / rôle (obligatoire)"
+              className="w-full p-1 border rounded dark:bg-gray-700 dark:text-white"
+              value={newAgent.intro}
+              onChange={(e) => setNewAgent({ ...newAgent, intro: e.target.value })}
+            />
+            <input
+              placeholder="Objectif"
+              className="w-full p-1 border rounded dark:bg-gray-700 dark:text-white"
+              value={newAgent.objectif}
+              onChange={(e) => setNewAgent({ ...newAgent, objectif: e.target.value })}
+            />
+            <input
+              placeholder="Inspiration"
+              className="w-full p-1 border rounded dark:bg-gray-700 dark:text-white"
+              value={newAgent.inspiration}
+              onChange={(e) => setNewAgent({ ...newAgent, inspiration: e.target.value })}
+            />
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
+            >
+              Ajouter l'IA
+            </button>
+          </form>
+        )}
+      </div>
 
       <form onSubmit={handleSubmit} className="flex space-x-2">
         <input
           name="reply"
-          className="flex-1 p-2 border rounded"
+          className="flex-1 p-2 border rounded dark:bg-gray-700 dark:text-white"
           placeholder="Votre réponse..."
           disabled={loading}
         />

@@ -12,8 +12,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
-      <body>{children}</body>
+    <html lang="fr" className="dark"> {/* tu peux rendre ça dynamique ensuite */}
+      <body className="bg-white text-black dark:bg-gray-900 dark:text-white">
+        {children}
+      </body>
     </html>
   );
 }
