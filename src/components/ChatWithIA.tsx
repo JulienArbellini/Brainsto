@@ -23,6 +23,7 @@ export default function ChatWithIA(props: Props) {
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [showNewAgentForm, setShowNewAgentForm] = useState(false);
+  const [typingAgent, setTypingAgent] = useState<string | null>(null);
   const [newAgent, setNewAgent] = useState<AgentConfig>({
     name: "",
     intro: "",
@@ -31,6 +32,24 @@ export default function ChatWithIA(props: Props) {
   });
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+    const inputRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+
+    const handleFocus = () => setIsKeyboardOpen(true);
+    const handleBlur = () => setIsKeyboardOpen(false);
+
+    input.addEventListener("focus", handleFocus);
+    input.addEventListener("blur", handleBlur);
+
+    return () => {
+        input.removeEventListener("focus", handleFocus);
+        input.removeEventListener("blur", handleBlur);
+    };
+    }, []);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -162,6 +181,7 @@ export default function ChatWithIA(props: Props) {
     }
 
     setLoading(true);
+    setTypingAgent(agent.name);
 
     const messages = generateMessagesForAgent(agent, agents, chat, topic, userOpinion);
 
@@ -181,6 +201,7 @@ export default function ChatWithIA(props: Props) {
 
       if (data.response) {
         setChat((prev) => [...prev, { role: agent.name, content: data.response }]);
+        setTypingAgent(null);
       } else {
         console.error("Erreur de réponse IA :", data);
       }
@@ -205,7 +226,7 @@ export default function ChatWithIA(props: Props) {
             <ChatHeader agentNames={agents.map((a) => a.name)} onRestart={onRestart} />
         
             {/* Zone scrollable */}
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 animate-fade-in"
             ref={chatContainerRef}
             >
 
@@ -215,6 +236,7 @@ export default function ChatWithIA(props: Props) {
                     message={msg}
                     isUser={msg.role === "user"}
                     agent={agents.find((a) => a.name === msg.role)}
+                    animate={i === chat.length - 1 && msg.role !== "user"}
                     colorClass={
                     msg.role === "user"
                         ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
@@ -222,6 +244,11 @@ export default function ChatWithIA(props: Props) {
                     }
                 />
                 ))}
+                {typingAgent && (
+                  <p className="text-sm italic text-white dark:text-gray-500">
+                    {typingAgent} est en train de répondre...
+                  </p>
+                )}
                 <div ref={chatEndRef} />
             </div>
         

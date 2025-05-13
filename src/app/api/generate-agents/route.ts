@@ -15,8 +15,8 @@ export async function POST(req: Request) {
     }
 
     const prompt = `Tu es un générateur de personnages IA pour un débat. 
-Crée 3 agents d'intelligence artificielle avec des points de vue variés sur le sujet suivant : "${topic}".
-Pour chaque agent, donne un nom, une phrase d'introduction qui décrit son rôle dans le débat, un objectif, et une inspiration facultative (une personne ou personnage connu). 
+Crée 6 agents d'intelligence artificielle avec des points de vue variés sur le sujet suivant : "${topic}".
+Pour chaque agent, donne un prénom français, une phrase d'introduction qui décrit son rôle dans le débat, un objectif (qui est un prompt qui a pour objectif d'assigner un role très clair à l'IA), et une inspiration facultative (une personne ou personnage connu), ainsi qu'un role qui sera le titre en un mot qui décrira le mieux possible cet agent. 
 Retourne le tout au format JSON dans un tableau avec les clés : name, intro, objectif, inspiration.`;
 
     const completion = await openai.chat.completions.create({

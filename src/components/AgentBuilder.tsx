@@ -18,6 +18,11 @@ export default function AgentBuilder({ onSubmit, onBack, initialAgents = [] }: P
     inspiration: "",
   });
 
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+const [editedAgent, setEditedAgent] = useState<AgentConfig | null>(null);
+const [showForm, setShowForm] = useState(false);
+
+
   const handleAdd = () => {
     if (!newAgent.name || !newAgent.intro) return;
     setAgents((prev) => [...prev, newAgent]);
@@ -30,50 +35,79 @@ export default function AgentBuilder({ onSubmit, onBack, initialAgents = [] }: P
     }
   };
 
+  const getShortRole = (intro: string) => {
+    if (!intro) return "Agent IA";
+    const keywords = ["écologiste", "entrepreneur", "philosophe", "critique", "optimiste"];
+    const found = keywords.find((kw) => intro.toLowerCase().includes(kw));
+    return found ? `Agent ${found}` : intro.split(" ").slice(0, 2).join(" ");
+  };
+
   return (
-    <div className="space-y-4 text-black dark:text-white">
-      <h2 className="text-xl font-semibold">👥 Configurez les agents du débat</h2>
+    <div className="flex justify-center">
+      <div className="space-y-4 text-black dark:text-white max-w-3xl"></div>
+      <div className="space-y-4 text-black dark:text-white">
+        <h2 className="text-xl font-semibold">👥 Configurez les agents du débat</h2>
 
-      <ul className="space-y-2">
-        {initialAgents.map((agent, i) => (
-            <li key={i} className="flex items-start gap-4 border p-3 rounded bg-gray-50 dark:bg-gray-800">
-            {agent.image && (
-                <img
-                src={agent.image}
-                alt={`Avatar de ${agent.name}`}
-                className="w-12 h-12 rounded-full border dark:border-gray-700"
-                />
-            )}
-            <div className="flex-1 space-y-1">
-                <p><strong>{agent.name}</strong> — {agent.intro}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                🎯 {agent.objectif || "aucun"} · 🌟 Inspiration : {agent.inspiration || "aucune"}
-                </p>
-                <button
-                onClick={() => handleAddSuggested(agent)}
-                className="mt-1 text-xs text-blue-600 dark:text-blue-400 "
-                >
-                ➕ Ajouter cet agent
-                </button>
-            </div>
-            </li>
-        ))}
-        </ul>
+        <div className="flex flex-wrap gap-4">
+    {initialAgents.map((agent, i) => (
+      <div
+        key={i}
+        className="relative group flex flex-col items-center w-20 text-center cursor-pointer"
+      >
+        <img
+          src={agent.image}
+          alt={`Avatar de ${agent.name}`}
+          className="w-16 h-16 rounded-full border dark:border-gray-600"
+        />
+        <p className="text-xs mt-1 text-gray-700 dark:text-gray-300 truncate max-w-full">
+          {agent.role}
+        </p>
 
-      {agents.length > 0 && (
-        <div className="space-y-2">
-          <p className="font-medium">Agents sélectionnés :</p>
-          <ul className="list-disc pl-4">
-            {agents.map((agent, i) => (
-              <li key={i}>
-                <strong>{agent.name}</strong> — {agent.intro} (🎯 {agent.objectif || "aucun"})
-              </li>
-            ))}
-          </ul>
+        {/* Fiche détaillée au hover */}
+        <div className="absolute z-10 hidden group-hover:flex flex-col items-start text-left bg-white dark:bg-gray-800 border dark:border-gray-600 p-3 rounded shadow-lg w-64 top-20">
+          <p><strong>{agent.name}</strong></p>
+          <p className="text-sm">{agent.intro}</p>
+          {agent.objectif && <p className="text-sm mt-1">🎯 {agent.objectif}</p>}
+          {agent.inspiration && <p className="text-sm">🌟 {agent.inspiration}</p>}
+          <button
+            onClick={() => handleAddSuggested(agent)}
+            className="text-sm text-blue-600 dark:text-blue-400 mt-2"
+          >
+            ➕ Ajouter cet agent
+          </button>
         </div>
-      )}
+      </div>
+    ))}
+  </div>
 
-      <div className="border rounded p-4 space-y-2 bg-gray-50 dark:bg-gray-800">
+        {agents.length > 0 && (
+          <div className="space-y-2">
+            <p className="font-medium">Agents sélectionnés :</p>
+            <ul className="list-disc pl-4">
+              {agents.map((agent, i) => (
+                <li key={i}>
+                  <strong>{agent.name}</strong> — {agent.intro} (🎯 {agent.objectif || "aucun"})
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+  <div>
+    {/* Bouton cercle + (comme une suggestion) */}
+    <div
+      onClick={() => setShowForm(true)}
+      className="flex flex-col items-center w-20 text-center cursor-pointer"
+    >
+      <div className="w-16 h-16 rounded-full border-2 border-dashed border-gray-400 dark:border-gray-500 flex items-center justify-center text-3xl text-gray-500 dark:text-gray-300">
+        +
+      </div>
+      <p className="text-xs mt-1 text-gray-700 dark:text-gray-300">Nouvel agent</p>
+    </div>
+
+    {/* Formulaire affiché au clic */}
+    {showForm && (
+      <div className="mt-4 border rounded p-4 space-y-2 bg-gray-50 dark:bg-gray-800 max-w-md">
         <p className="font-medium">➕ Ajouter un agent personnalisé :</p>
         <input
           className="w-full p-2 border rounded bg-white text-black dark:bg-gray-700 dark:text-white dark:border-gray-600"
@@ -99,29 +133,43 @@ export default function AgentBuilder({ onSubmit, onBack, initialAgents = [] }: P
           value={newAgent.inspiration}
           onChange={(e) => setNewAgent({ ...newAgent, inspiration: e.target.value })}
         />
-        <button
-          onClick={handleAdd}
-          className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
-        >
-          ➕ Ajouter l'agent
-        </button>
-      </div>
-
-      <div className="flex justify-between">
-        <button
-          onClick={onBack}
-          className="text-sm text-gray-600 dark:text-gray-300 "
-        >
-          ⬅ Retour
-        </button>
-        {agents.length > 0 && (
+        <div className="flex justify-between items-center">
           <button
-            onClick={() => onSubmit(agents)}
-            className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
+            onClick={() => setShowForm(false)}
+            className="text-sm text-gray-500 dark:text-gray-400"
           >
-            ✅ Lancer le débat
+            Annuler
           </button>
-        )}
+          <button
+            onClick={() => {
+              handleAdd();
+              setShowForm(false);
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+          >
+            Ajouter
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+
+        <div className="flex justify-between">
+          <button
+            onClick={onBack}
+            className="text-sm text-gray-600 dark:text-gray-300 "
+          >
+            ⬅ Retour
+          </button>
+          {agents.length > 0 && (
+            <button
+              onClick={() => onSubmit(agents)}
+              className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
+            >
+              ✅ Lancer le débat
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

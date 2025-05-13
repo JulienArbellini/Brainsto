@@ -9,50 +9,50 @@ import ChatWithIA from "@/components/ChatWithIA";
 import { AgentConfig } from "@/types/Agents";
 
 export default function DebatePage() {
-  const [step, setStep] = useState<"topic" | "agent" | "chat">("chat");
+  const [step, setStep] = useState<"topic" | "agent" | "chat">("topic");
   const [topic, setTopic] = useState("");
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [suggestedAgents, setSuggestedAgents] = useState<AgentConfig[] | null>(null);
   
 
-//   useEffect(() => {
-//     if (step === "agent" && topic && suggestedAgents === null) {
-//       fetch("/api/generate-agents", {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ topic }),
-//       })
-//         .then((res) => res.json())
-//         .then((data) => setSuggestedAgents(data.agents || []))
-//         .catch((err) => {
-//           console.error("Erreur de génération des agents :", err);
-//           setSuggestedAgents([]); // pour éviter de boucler
-//         });
-//     }
-//   }, [step, topic, suggestedAgents]);
+  useEffect(() => {
+    if (step === "agent" && topic && suggestedAgents === null) {
+      fetch("/api/generate-agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic }),
+      })
+        .then((res) => res.json())
+        .then((data) => setSuggestedAgents(data.agents || []))
+        .catch((err) => {
+          console.error("Erreur de génération des agents :", err);
+          setSuggestedAgents([]); // pour éviter de boucler
+        });
+    }
+  }, [step, topic, suggestedAgents]);
 
 // POUR TEST UNIQUEMENT
-useEffect(() => {
-    if (step === "chat" && agents.length === 0) {
-      setTopic("Faut-il interdire les trottinettes électriques ?");
-      setAgents([
-        {
-          name: "Lucie",
-          intro: "Lucie est écologiste convaincue et souhaite limiter les véhicules motorisés.",
-          objectif: "Démontrer que les trottinettes sont nuisibles à l’environnement urbain.",
-          inspiration: "Greta Thunberg",
-          image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Lucie"
-        },
-        {
-          name: "Marc",
-          intro: "Marc est un entrepreneur qui défend l’innovation et la mobilité douce.",
-          objectif: "Prouver que les trottinettes sont un progrès nécessaire.",
-          inspiration: "Elon Musk",
-          image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Marc"
-        }
-      ]);
-    }
-  }, [step]);
+// useEffect(() => {
+//     if (step === "chat" && agents.length === 0) {
+//       setTopic("Faut-il interdire les trottinettes électriques ?");
+//       setAgents([
+//         {
+//           name: "Lucie",
+//           intro: "Lucie est écologiste convaincue et souhaite limiter les véhicules motorisés.",
+//           objectif: "Démontrer que les trottinettes sont nuisibles à l’environnement urbain.",
+//           inspiration: "Greta Thunberg",
+//           image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Lucie"
+//         },
+//         {
+//           name: "Marc",
+//           intro: "Marc est un entrepreneur qui défend l’innovation et la mobilité douce.",
+//           objectif: "Prouver que les trottinettes sont un progrès nécessaire.",
+//           inspiration: "Elon Musk",
+//           image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Marc"
+//         }
+//       ]);
+//     }
+//   }, [step]);
   
 
   return (

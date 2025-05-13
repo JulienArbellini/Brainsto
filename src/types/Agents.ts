@@ -4,5 +4,6 @@ export interface AgentConfig {
     intro: string;
     objectif?: string;
     inspiration?: string;
+    role?: string;
     image?: string; // ✅ nouvelle propriété pour l’image
   }
