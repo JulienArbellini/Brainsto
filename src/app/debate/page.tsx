@@ -32,9 +32,9 @@ export default function DebatePage() {
   }, [step, topic, suggestedAgents]);
 
   return (
-    <main className="max-w-3xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">🧠 Démarrez votre débat</h1>
-
+    <main className={step === "chat" ? "h-screen flex flex-col" : "max-w-3xl mx-auto p-6 space-y-6"}>
+      {step !== "chat" && <h1 className="text-2xl font-bold">🧠 Démarrez votre débat</h1>}
+  
       {step === "topic" && (
         <DebateTopicForm
           topic={topic}
@@ -44,22 +44,22 @@ export default function DebatePage() {
           }}
         />
       )}
-
-        {step === "agent" && (
+  
+      {step === "agent" && (
         suggestedAgents === null ? (
-            <p className="text-center text-gray-500">Chargement des suggestions d'agents...</p>
+          <p className="text-center text-gray-500">Chargement des suggestions d'agents...</p>
         ) : (
-            <AgentBuilder
+          <AgentBuilder
             initialAgents={suggestedAgents}
             onSubmit={(createdAgents) => {
-                setAgents(createdAgents);
-                setStep("chat");
+              setAgents(createdAgents);
+              setStep("chat");
             }}
             onBack={() => setStep("topic")}
-            />
+          />
         )
-        )}
-
+      )}
+  
       {step === "chat" && agents.length > 0 && (
         <ChatWithIA
           topic={topic}
@@ -74,4 +74,5 @@ export default function DebatePage() {
       )}
     </main>
   );
+  
 }

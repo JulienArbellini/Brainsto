@@ -3,6 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { AgentConfig } from "@/types/Agents";
 import { ChatMessage } from "@/types/ChatMessage";
+import ChatHeader from "./chatIA/ChatHeader";
+import ChatBubble from "./chatIA/ChatBubble";
+import AgentButtons from "./chatIA/AgentButtons";
+import UserInput from "./chatIA/UserInput";
+import AddAgentForm from "./chatIA/AddAgentForm";
 
 interface Props {
   topic: string;
@@ -171,67 +176,67 @@ useEffect(() => {
     setLoading(false);
   };
 
+  const handleUserMessage = (value: string) => {
+    const newChat: ChatMessage[] = [...chat, { role: "user", content: value }];
+    setChat(newChat);
+  };
+  
+
   return (
-<div className="flex flex-col h-screen text-gray-900 dark:text-gray-100">
-
-{/* Header (fixe) */}
-<div className="px-4 py-2 border-b border-gray-300 dark:border-gray-700">
-  <div className="flex justify-between items-center">
-    <h2 className="text-lg font-bold">💬 Débat avec {agents.map((a) => a.name).join(", ")}</h2>
-    <button onClick={onRestart} className="text-sm text-red-600 underline hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
-      🔁 Recommencer
-    </button>
-  </div>
-</div>
-
-{/* Zone de chat (scrollable) */}
-<div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-  {chat.map((msg, i) => (
-    <div key={i} className={`text-sm ${msg.role === "user" ? "text-right" : "text-left"}`}>
-      <div className={`inline-block px-3 py-2 rounded ${msg.role === "user" ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100" : getColorClassForAgent(msg.role)}`}>
-        <strong>{msg.role === "user" ? "Vous" : msg.role} :</strong> {msg.content}
+    <div className="flex justify-center h-screen">
+        <div className="flex flex-col h-full w-full max-w-3xl">
+      
+      {/* Header fixe */}
+      <ChatHeader agentNames={agents.map((a) => a.name)} onRestart={onRestart} />
+  
+      {/* Zone scrollable */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 ">
+        {chat.map((msg, i) => (
+          <ChatBubble
+            key={i}
+            message={msg}
+            isUser={msg.role === "user"}
+            agent={agents.find((a) => a.name === msg.role)}
+            colorClass={
+              msg.role === "user"
+                ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
+                : getColorClassForAgent(msg.role)
+            }
+          />
+        ))}
       </div>
+  
+      {/* Zone d’actions fixes en bas */}
+      <div className="p-3 bg-gray-50 dark:bg-gray-900 border-t dark:border-gray-700 space-y-2 shrink-0">
+        <AgentButtons agents={agents} loading={loading} onAgentClick={handleAgentResponse} />
+        
+        <AddAgentForm
+          onAdd={async (agentToAdd) => {
+            const res = await fetch("/api/ia-chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                rolePrompt: agentToAdd.intro,
+                objectif: agentToAdd.objectif || "",
+                inspiration: agentToAdd.inspiration || "",
+                messages: chat.map((m) => ({
+                  role: m.role === "user" ? "user" : "assistant",
+                  content: m.content,
+                })),
+              }),
+            });
+  
+            const data = await res.json();
+            setAgents((prev) => [...prev, agentToAdd]);
+            setChat((prev) => [...prev, { role: agentToAdd.name, content: data.response }]);
+          }}
+        />
+  
+        <UserInput onSubmit={handleUserMessage} disabled={loading} />
+      </div>
+          </div>
     </div>
-  ))}
-  {loading && <p className="text-center text-gray-400 dark:text-gray-500">L’IA réfléchit...</p>}
-  <div ref={chatEndRef} />
-</div>
-
-{/* Actions agents */}
-<div className="p-4 bg-gray-50 dark:bg-gray-800 border-t dark:border-gray-700 space-y-2">
-  <p className="text-sm font-semibold">💡 Faire intervenir un agent :</p>
-  <div className="flex flex-wrap gap-2">
-    {agents.map((agent) => (
-      <button
-        key={agent.name}
-        onClick={() => handleAgentResponse(agent)}
-        className="flex items-center gap-2 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 px-3 py-1 rounded"
-        disabled={loading}
-      >
-        {agent.image && <img src={agent.image} alt={agent.name} className="w-5 h-5 rounded-full" />}
-        💬 {agent.name}
-      </button>
-    ))}
-  </div>
-</div>
-
-{/* Formulaire de réponse (fixe en bas) */}
-<form onSubmit={handleSubmit} className="px-4 py-2 border-t border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 flex space-x-2">
-  <input
-    name="reply"
-    className="flex-1 p-2 border rounded dark:bg-gray-700 dark:text-white"
-    placeholder="Votre réponse..."
-    disabled={loading}
-  />
-  <button
-    type="submit"
-    disabled={loading}
-    className="bg-blue-600 text-white px-4 py-2 rounded"
-  >
-    Envoyer
-  </button>
-</form>
-</div>
-
   );
+  
+  
 }
