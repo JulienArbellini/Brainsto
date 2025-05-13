@@ -22,3 +22,11 @@ input, textarea, select {
     }
   }
 }
+
+html,
+body {
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Empêche le scroll global */
+}

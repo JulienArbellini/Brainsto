@@ -14,6 +14,7 @@ interface Props {
   userOpinion: string;
   agents: AgentConfig[];
   onRestart: () => void;
+  isMock?: boolean; // <- nouvelle prop
 }
 
 export default function ChatWithIA(props: Props) {
@@ -28,11 +29,16 @@ export default function ChatWithIA(props: Props) {
     objectif: "",
     inspiration: "",
   });
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-useEffect(() => {
-  chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-}, [chat]);
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chat]);
+  
+  
 
   function generateMessagesForAgent(
     agent: AgentConfig,
@@ -100,6 +106,15 @@ useEffect(() => {
   const startDebate = async () => {
     setLoading(true);
     const updatedChat: ChatMessage[] = [];
+
+    if (props.isMock) {
+        setChat([
+          { role: agents[0].name, content: "Bienvenue dans ce débat simulé 👋" },
+          { role: "user", content: "Ok testons l’interface." }
+        ]);
+        setLoading(false);
+        return;
+      }
 
     for (const agent of agents) {
       const messages = generateMessagesForAgent(agent, agents, updatedChat, topic, userOpinion);
@@ -183,58 +198,63 @@ useEffect(() => {
   
 
   return (
-    <div className="flex justify-center h-screen">
-        <div className="flex flex-col h-full w-full max-w-3xl">
+    <div className="flex flex-col h-dvh items-center justify-between bg-gray-900 text-white">
+        <div className="w-full max-w-2xl flex flex-col h-full">
       
-      {/* Header fixe */}
-      <ChatHeader agentNames={agents.map((a) => a.name)} onRestart={onRestart} />
-  
-      {/* Zone scrollable */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 ">
-        {chat.map((msg, i) => (
-          <ChatBubble
-            key={i}
-            message={msg}
-            isUser={msg.role === "user"}
-            agent={agents.find((a) => a.name === msg.role)}
-            colorClass={
-              msg.role === "user"
-                ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
-                : getColorClassForAgent(msg.role)
-            }
-          />
-        ))}
-      </div>
-  
-      {/* Zone d’actions fixes en bas */}
-      <div className="p-3 bg-gray-50 dark:bg-gray-900 border-t dark:border-gray-700 space-y-2 shrink-0">
-        <AgentButtons agents={agents} loading={loading} onAgentClick={handleAgentResponse} />
+            {/* Header fixe */}
+            <ChatHeader agentNames={agents.map((a) => a.name)} onRestart={onRestart} />
         
-        <AddAgentForm
-          onAdd={async (agentToAdd) => {
-            const res = await fetch("/api/ia-chat", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                rolePrompt: agentToAdd.intro,
-                objectif: agentToAdd.objectif || "",
-                inspiration: agentToAdd.inspiration || "",
-                messages: chat.map((m) => ({
-                  role: m.role === "user" ? "user" : "assistant",
-                  content: m.content,
-                })),
-              }),
-            });
-  
-            const data = await res.json();
-            setAgents((prev) => [...prev, agentToAdd]);
-            setChat((prev) => [...prev, { role: agentToAdd.name, content: data.response }]);
-          }}
-        />
-  
-        <UserInput onSubmit={handleUserMessage} disabled={loading} />
-      </div>
-          </div>
+            {/* Zone scrollable */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
+            ref={chatContainerRef}
+            >
+
+                {chat.map((msg, i) => (
+                <ChatBubble
+                    key={i}
+                    message={msg}
+                    isUser={msg.role === "user"}
+                    agent={agents.find((a) => a.name === msg.role)}
+                    colorClass={
+                    msg.role === "user"
+                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
+                        : getColorClassForAgent(msg.role)
+                    }
+                />
+                ))}
+                <div ref={chatEndRef} />
+            </div>
+        
+            {/* Zone d’actions fixes en bas */}
+            <div className="shrink-0 px-4 py-3 space-y-2 bg-gray-900">
+                <AgentButtons agents={agents} loading={loading} onAgentClick={handleAgentResponse} />
+                
+                <AddAgentForm
+                onAdd={async (agentToAdd) => {
+                    const res = await fetch("/api/ia-chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        rolePrompt: agentToAdd.intro,
+                        objectif: agentToAdd.objectif || "",
+                        inspiration: agentToAdd.inspiration || "",
+                        messages: chat.map((m) => ({
+                        role: m.role === "user" ? "user" : "assistant",
+                        content: m.content,
+                        })),
+                    }),
+                    });
+        
+                    const data = await res.json();
+                    setAgents((prev) => [...prev, agentToAdd]);
+                    setChat((prev) => [...prev, { role: agentToAdd.name, content: data.response }]);
+                }}
+                />
+        
+                <UserInput onSubmit={handleUserMessage} disabled={loading} />
+            </div>
+            
+        </div>
     </div>
   );
   
